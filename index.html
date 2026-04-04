@@ -2799,8 +2799,11 @@
             // 讓 radio 可以再次點擊取消選擇
             initRadioToggle();
             
-            // 先初始化 LIFF 登入，登入成功後才載入教練名單
+            // 初始化 LIFF 登入
             initLiff();
+
+            // 教練名單獨立載入（不依賴 LIFF）
+            loadCoaches();
             
             // 初始化自動暫存功能
             initAutoSave();
@@ -2896,6 +2899,7 @@
                         if (analystEl) analystEl.textContent = decoded;
                     }
                     await loadAnalyst(uidFromPortal);
+                    await loadCoaches();
                     return;
                 }
 
@@ -3871,18 +3875,29 @@
                     inbodyResult: document.getElementById('inbodyResult').value
                 },
 
-                // 預估成交率
-                closePrediction: {
-                    emotionLevel: document.querySelector('input[name="emotionLevel"]:checked')?.value || '',
-                    closeRate: document.querySelector('input[name="closeRate"]:checked')?.value || '',
-                    notes: document.getElementById('closeRateNotes').value
-                }
+                // 預估成交率（文字格式）
+                closePrediction: formatClosePredictionText()
             };
             
             
             return data;
         }
         
+        // 格式化預估成交率為文字（給 Google Sheet 用）
+        function formatClosePredictionText() {
+            var emotionLevel = document.querySelector('input[name="emotionLevel"]:checked')?.value || '';
+            var closeRate = document.querySelector('input[name="closeRate"]:checked')?.value || '';
+            var notes = document.getElementById('closeRateNotes').value.trim();
+
+            var emotionLabels = { '1': '冷淡', '2': '略有興趣', '3': '普通', '4': '積極', '5': '非常積極' };
+            var parts = [];
+            if (emotionLevel) parts.push('情緒等級:' + emotionLevel + '-' + (emotionLabels[emotionLevel] || ''));
+            if (closeRate) parts.push('成交預判:' + closeRate);
+            if (notes) parts.push('備註:' + notes);
+
+            return parts.join(' | ');
+        }
+
         // 格式化課程排序文字
         function formatCourseOrder() {
             var courses = [
