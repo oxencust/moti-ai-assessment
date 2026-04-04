@@ -2052,6 +2052,35 @@
                 <div class="form-group"><label class="form-label">注意事項</label><textarea class="form-input" id="precautions" rows="2" placeholder="請填寫注意事項"></textarea></div>
                 <div class="form-group"><label class="form-label">客服協助</label><textarea class="form-input" id="serviceNotes" rows="2" placeholder="請填寫需要客服協助的事項"></textarea></div>
                 <div class="form-group"><label class="form-label">Inbody 檢測結果</label><textarea class="form-input" id="inbodyResult" rows="2" placeholder="請填寫 Inbody 檢測結果摘要（如：肌肉、蛋白質不足）"></textarea></div>
+
+                <!-- 預估成交率 -->
+                <div class="form-group" style="margin-top: 20px; padding-top: 20px; border-top: 2px solid var(--yellow-light);">
+                    <label class="form-label">💰 預估成交率</label>
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label class="form-label" style="font-size: 0.85rem; color: var(--gray);">客戶情緒等級</label>
+                        <div class="radio-group" id="emotionLevel">
+                            <label class="radio-btn"><input type="radio" name="emotionLevel" value="1"><span class="circle"></span><span>1 - 冷淡</span></label>
+                            <label class="radio-btn"><input type="radio" name="emotionLevel" value="2"><span class="circle"></span><span>2 - 普通</span></label>
+                            <label class="radio-btn"><input type="radio" name="emotionLevel" value="3"><span class="circle"></span><span>3 - 有興趣</span></label>
+                            <label class="radio-btn"><input type="radio" name="emotionLevel" value="4"><span class="circle"></span><span>4 - 積極</span></label>
+                            <label class="radio-btn"><input type="radio" name="emotionLevel" value="5"><span class="circle"></span><span>5 - 非常積極</span></label>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label class="form-label" style="font-size: 0.85rem; color: var(--gray);">成交預判</label>
+                        <div class="radio-group" id="closeRate">
+                            <label class="radio-btn"><input type="radio" name="closeRate" value="極低"><span class="circle"></span><span>極低</span></label>
+                            <label class="radio-btn"><input type="radio" name="closeRate" value="低"><span class="circle"></span><span>低</span></label>
+                            <label class="radio-btn"><input type="radio" name="closeRate" value="中等"><span class="circle"></span><span>中等</span></label>
+                            <label class="radio-btn"><input type="radio" name="closeRate" value="高"><span class="circle"></span><span>高</span></label>
+                            <label class="radio-btn"><input type="radio" name="closeRate" value="極高"><span class="circle"></span><span>極高</span></label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" style="font-size: 0.85rem; color: var(--gray);">備註說明</label>
+                        <textarea class="form-input" id="closeRateNotes" rows="2" placeholder="分析師觀察補充（如：客戶猶豫原因、預算考量等）"></textarea>
+                    </div>
+                </div>
             </div>
 
             <!-- 圖片上傳區 -->
@@ -2164,7 +2193,7 @@
         // ==================== 設定區（請填入） ====================
         var CONFIG = {
             // 【請填入】LIFF ID（從 LINE Developers Console 取得）
-            LIFF_ID: '2007947083-9Pf6fUxc',
+            LIFF_ID: '2008660081-Pw8Zcb6h',
 
             // 【新】Supabase Edge Function URL（用於讀取資料）
             EDGE_FUNCTION_URL: 'https://mnjilhpztnowaplggvkk.supabase.co/functions/v1/moti-api',
@@ -3821,6 +3850,13 @@
                     precautions: document.getElementById('precautions').value,
                     serviceNotes: document.getElementById('serviceNotes').value,
                     inbodyResult: document.getElementById('inbodyResult').value
+                },
+
+                // 預估成交率
+                closePrediction: {
+                    emotionLevel: document.querySelector('input[name="emotionLevel"]:checked')?.value || '',
+                    closeRate: document.querySelector('input[name="closeRate"]:checked')?.value || '',
+                    notes: document.getElementById('closeRateNotes').value
                 }
             };
             
@@ -4079,6 +4115,11 @@
                     inbodyUrl: imageData.inbodyUrl
                 };
                 
+                // 如果是從待預約名冊選擇的，帶入 bookingId 讓 Make 一併處理
+                if (window.selectedBookingId) {
+                    formData.bookingId = window.selectedBookingId;
+                }
+
                 // 提交到 Make
                 var response = await fetch(CONFIG.MAKE_WEBHOOK_URL, {
                     method: 'POST',
@@ -4088,19 +4129,14 @@
                         data: formData
                     })
                 });
-                
+
                 var result = await safeParseJSON(response);
                 hideLoading();
                 document.getElementById('submitBtn').disabled = false;
-                
+
                 if (result.success) {
                     // 清除草稿
                     clearDraft();
-                    
-                    // 如果是從待預約名冊選擇的，標記為已完成
-                    if (window.selectedBookingId) {
-                        markBookingCompleted(window.selectedBookingId);
-                    }
                     showSuccess(formData, imageData, result);
                 } else {
                     showToast('提交失敗：' + (result.error || '未知錯誤'));
@@ -4113,23 +4149,8 @@
             }
         }
         
-        // 標記預約為已完成
-        async function markBookingCompleted(bookingId) {
-            try {
-                await fetch(CONFIG.MAKE_WEBHOOK_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'booking',
-                        type: 'complete',
-                        id: bookingId
-                    })
-                });
-                console.log('預約已標記為完成:', bookingId);
-            } catch (error) {
-                console.error('標記預約完成失敗:', error);
-            }
-        }
+        // markBookingCompleted 已合併至 submit_assessment
+        // Make 場景收到 data.bookingId 時會一併將預約標記為完成
         
         function showSuccess(formData, imageData, result) {
             var details = '<p><strong>會員姓名：</strong>' + formData.memberName + '</p>' +
