@@ -2877,27 +2877,46 @@
         async function initLiff() {
             console.log('initLiff 開始執行');
             try {
+                // 優先從入口頁面帶過來的 URL 參數取得身份
+                var urlParams = new URLSearchParams(window.location.search);
+                var uidFromPortal = urlParams.get('uid');
+
                 console.log('LIFF ID:', CONFIG.LIFF_ID);
                 await liff.init({ liffId: CONFIG.LIFF_ID });
                 console.log('LIFF 初始化成功');
-                
-                if (!liff.isLoggedIn()) {
-                    console.log('用戶未登入，導向 LINE 登入');
-                    // 未登入，導向 LINE 登入
-                    liff.login({ redirectUri: window.location.href });
+
+                // 如果從入口帶了 uid，跳過 LIFF 登入，直接用入口身份
+                if (uidFromPortal) {
+                    console.log('從入口頁面進入，uid:', uidFromPortal);
+                    document.getElementById('analystLineId').value = uidFromPortal;
+                    var nameFromPortal = urlParams.get('name');
+                    if (nameFromPortal) {
+                        var decoded = decodeURIComponent(nameFromPortal);
+                        var analystEl = document.getElementById('analystName');
+                        if (analystEl) analystEl.textContent = decoded;
+                    }
+                    await loadAnalyst(uidFromPortal);
                     return;
                 }
-                
+
+                if (!liff.isLoggedIn()) {
+                    console.log('用戶未登入，導向 LINE 登入');
+                    // 未登入，用乾淨 URL 登入（避免入口參數導致 400）
+                    var cleanUrl = window.location.origin + window.location.pathname;
+                    liff.login({ redirectUri: cleanUrl });
+                    return;
+                }
+
                 console.log('用戶已登入，取得資料中...');
                 // 已登入，取得用戶資料
                 var profile = await liff.getProfile();
                 var lineUserId = profile.userId;
-                
+
                 console.log('LINE User ID:', lineUserId);
-                
+
                 // 儲存到隱藏欄位
                 document.getElementById('analystLineId').value = lineUserId;
-                
+
                 // 查詢分析師資料
                 console.log('開始查詢分析師...');
                 await loadAnalyst(lineUserId);
