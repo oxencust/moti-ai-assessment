@@ -3746,7 +3746,7 @@
                 assessmentDateTime: dateValue + ' ' + timeValue + ':00',
                 
                 // 分析師資料
-                analystId: analystData ? analystData.id : '',
+                analystId: analystData ? (analystData.coach_code || analystData.name || analystData.id) : '',
                 analystName: analystData ? analystData.coach_name : '',
                 analystLineId: document.getElementById('analystLineId').value,
                 
