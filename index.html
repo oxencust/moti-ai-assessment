@@ -2292,9 +2292,27 @@
                     // 骨骼備註
                     skeletonNotes: collectSkeletonNotesForDraft(),
                     // 肌肉評估
-                    muscles: collectMuscleDataForDraft()
+                    muscles: collectMuscleDataForDraft(),
+                    // 📝 分析師建議（Page 5）
+                    shortTermGoal: document.getElementById('shortTermGoal').value,
+                    weightTraining: document.getElementById('weightTraining').value,
+                    pilatesTraining: document.getElementById('pilatesTraining').value,
+                    stretchTraining: document.getElementById('stretchTraining').value,
+                    weightOrder: document.getElementById('weightOrder').value,
+                    pilatesOrder: document.getElementById('pilatesOrder').value,
+                    stretchOrder: document.getElementById('stretchOrder').value,
+                    clientUnderstand: (document.querySelector('input[name="clientUnderstand"]:checked') || {}).value || '',
+                    functionalTraining: document.getElementById('functionalTraining').value,
+                    fasciaRelease: document.getElementById('fasciaRelease').value,
+                    precautions: document.getElementById('precautions').value,
+                    serviceNotes: document.getElementById('serviceNotes').value,
+                    inbodyResult: document.getElementById('inbodyResult').value,
+                    emotionLevel: (document.querySelector('input[name="emotionLevel"]:checked') || {}).value || '',
+                    closeRate: (document.querySelector('input[name="closeRate"]:checked') || {}).value || '',
+                    closeRateNotes: document.getElementById('closeRateNotes').value,
+                    coachRatings: collectCoachRatingsForDraft()
                 };
-                
+
                 localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
                 console.log('草稿已自動儲存:', new Date().toLocaleTimeString());
             } catch (e) {
@@ -2393,7 +2411,24 @@
             });
             return muscles;
         }
-        
+
+        // 收集教練評分（草稿用）
+        function collectCoachRatingsForDraft() {
+            var ratings = [];
+            document.querySelectorAll('.half-star-rating').forEach(function(el) {
+                var val = parseFloat(el.dataset.value) || 0;
+                if (val > 0) {
+                    ratings.push({
+                        coach: el.dataset.coach || '',
+                        type: el.dataset.type || '',
+                        name: el.dataset.name || '',
+                        value: val
+                    });
+                }
+            });
+            return ratings;
+        }
+
         // 載入草稿
         function loadDraft() {
             try {
@@ -2570,12 +2605,79 @@
                     });
                 }
                 
+                // 📝 分析師建議（Page 5）
+                if (draft.shortTermGoal) document.getElementById('shortTermGoal').value = draft.shortTermGoal;
+                if (draft.weightTraining) document.getElementById('weightTraining').value = draft.weightTraining;
+                if (draft.pilatesTraining) document.getElementById('pilatesTraining').value = draft.pilatesTraining;
+                if (draft.stretchTraining) document.getElementById('stretchTraining').value = draft.stretchTraining;
+                if (draft.weightOrder) document.getElementById('weightOrder').value = draft.weightOrder;
+                if (draft.pilatesOrder) document.getElementById('pilatesOrder').value = draft.pilatesOrder;
+                if (draft.stretchOrder) document.getElementById('stretchOrder').value = draft.stretchOrder;
+                // 更新總堂數
+                if (draft.weightTraining || draft.pilatesTraining || draft.stretchTraining) {
+                    if (typeof updateTotalCourses === 'function') updateTotalCourses();
+                }
+                if (draft.clientUnderstand) {
+                    var cuEl = document.querySelector('input[name="clientUnderstand"][value="' + draft.clientUnderstand + '"]');
+                    if (cuEl) { cuEl.checked = true; cuEl.dataset.wasChecked = 'true'; var lb = cuEl.closest('.radio-btn'); if (lb) lb.classList.add('checked'); }
+                }
+                if (draft.functionalTraining) document.getElementById('functionalTraining').value = draft.functionalTraining;
+                if (draft.fasciaRelease) document.getElementById('fasciaRelease').value = draft.fasciaRelease;
+                if (draft.precautions) document.getElementById('precautions').value = draft.precautions;
+                if (draft.serviceNotes) document.getElementById('serviceNotes').value = draft.serviceNotes;
+                if (draft.inbodyResult) document.getElementById('inbodyResult').value = draft.inbodyResult;
+                if (draft.emotionLevel) {
+                    var emEl = document.querySelector('input[name="emotionLevel"][value="' + draft.emotionLevel + '"]');
+                    if (emEl) { emEl.checked = true; emEl.dataset.wasChecked = 'true'; var lb2 = emEl.closest('.radio-btn'); if (lb2) lb2.classList.add('checked'); }
+                }
+                if (draft.closeRate) {
+                    var crEl = document.querySelector('input[name="closeRate"][value="' + draft.closeRate + '"]');
+                    if (crEl) { crEl.checked = true; crEl.dataset.wasChecked = 'true'; var lb3 = crEl.closest('.radio-btn'); if (lb3) lb3.classList.add('checked'); }
+                }
+                if (draft.closeRateNotes) document.getElementById('closeRateNotes').value = draft.closeRateNotes;
+                // 教練評分恢復（需要教練名單已載入後才能恢復）
+                if (draft.coachRatings && draft.coachRatings.length > 0) {
+                    window._pendingCoachRatings = draft.coachRatings;
+                    // 延遲恢復，等教練名單載入完成
+                    setTimeout(function() {
+                        restoreCoachRatings(window._pendingCoachRatings);
+                    }, 2000);
+                }
+
                 console.log('草稿已恢復');
             } catch (e) {
                 console.warn('草稿恢復失敗:', e);
             }
         }
-        
+
+        // 恢復教練評分
+        function restoreCoachRatings(ratings) {
+            if (!ratings || ratings.length === 0) return;
+            ratings.forEach(function(r) {
+                var selector = '.half-star-rating[data-coach="' + r.coach + '"]';
+                if (!r.coach) selector = '.half-star-rating[data-name="' + r.name + '"][data-type="' + r.type + '"]';
+                var el = document.querySelector(selector);
+                if (el) {
+                    el.dataset.value = r.value;
+                    // 更新星星顯示
+                    var fills = el.querySelectorAll('.star-fill');
+                    fills.forEach(function(fill, idx) {
+                        var starNum = idx + 1;
+                        if (r.value >= starNum) {
+                            fill.style.width = '100%';
+                        } else if (r.value >= starNum - 0.5) {
+                            fill.style.width = '50%';
+                        } else {
+                            fill.style.width = '0%';
+                        }
+                    });
+                    var valDisplay = el.querySelector('.rating-value');
+                    if (valDisplay) valDisplay.textContent = r.value;
+                }
+            });
+            console.log('教練評分已恢復');
+        }
+
         // 檢查是否有草稿並詢問恢復
         function checkAndRestoreDraft() {
             var draft = loadDraft();
@@ -3020,15 +3122,27 @@
         }
 
         // ==================== 會員查詢 ====================
-        async function searchMember() {
+        async function searchMember(skipConfirm) {
             var name = document.getElementById('memberName').value.trim();
             var phone = document.getElementById('memberPhone').value.trim();
-            
+
             if (!name || !phone) {
                 showToast('請輸入姓名和電話');
                 return;
             }
-            
+
+            // 手動搜尋時，如果是不同學員且有未送出資料，顯示確認
+            if (!skipConfirm && memberData && hasAssessmentData()) {
+                var isSame = (memberData.name === name && memberData.phone === phone);
+                if (!isSame) {
+                    var confirmed = confirm('目前表單有未送出的評估資料，搜尋新學員將會清除所有填寫內容。\n\n確定要切換嗎？');
+                    if (!confirmed) return;
+                    resetAssessmentForm();
+                    document.getElementById('memberName').value = name;
+                    document.getElementById('memberPhone').value = phone;
+                }
+            }
+
             showLoading('查詢會員中...');
 
             try {
@@ -3154,10 +3268,10 @@
             console.log('fillPersonalData 被呼叫，有歷史：', hasHistory);
             
             // 決定資料來源
-            var goalsData = (history && history.goals) ? history.goals : member.goals;
-            var diseasesData = (history && history.diseases) ? history.diseases : member.medical_history;
-            var notesData = (history && history.notes) ? history.notes : member.consultation_notes;
-            var exerciseData = member.exercise_exp; // 運動經驗只從諮詢單來
+            var goalsData = (history && history.goals) ? history.goals : (member.goals || member.fitness_goal || '');
+            var diseasesData = (history && history.diseases) ? history.diseases : (member.medical_history || '');
+            var notesData = (history && history.notes) ? history.notes : (member.consultation_notes || member.notes || '');
+            var exerciseData = member.exercise_exp || ''; // 運動經驗只從諮詢單來
             
             var hasData = false;
             
@@ -4771,24 +4885,137 @@
             container.innerHTML = html;
         }
         
+        // 檢查表單是否有填寫過的評估資料
+        function hasAssessmentData() {
+            // 檢查各種表單欄位是否有填寫
+            if (document.querySelectorAll('input[name="goals"]:checked').length > 0) return true;
+            if (document.querySelectorAll('input[name="diseases"]:checked').length > 0) return true;
+            if (document.querySelector('input[name="exercise"]:checked')) return true;
+            if (document.getElementById('notes') && document.getElementById('notes').value.trim()) return true;
+            if (document.getElementById('risk1') && document.getElementById('risk1').value) return true;
+            if (document.querySelectorAll('.muscle-entry').length > 0) return true;
+            if (document.getElementById('shortTermGoal') && document.getElementById('shortTermGoal').value.trim()) return true;
+            if (motiFiles.length > 0 || inbodyFiles.length > 0) return true;
+            if (document.querySelector('input[name="emotionLevel"]:checked')) return true;
+            if (document.querySelector('input[name="closeRate"]:checked')) return true;
+            return false;
+        }
+
+        // 重置所有評估表單欄位（保留會員基本資料和日期時間）
+        function resetAssessmentForm() {
+            // 清除所有 checkbox
+            document.querySelectorAll('input[type="checkbox"]:checked').forEach(function(el) {
+                el.checked = false;
+                var label = el.closest('.checkbox-label');
+                if (label) label.classList.remove('checked');
+            });
+            // 清除所有 radio
+            document.querySelectorAll('input[type="radio"]:checked').forEach(function(el) {
+                el.checked = false;
+                el.dataset.wasChecked = '';
+                var label = el.closest('.radio-btn');
+                if (label) label.classList.remove('checked');
+            });
+            // 清除 textarea
+            ['notes', 'exerciseType', 'exerciseDuration', 'shortTermGoal', 'functionalTraining',
+             'fasciaRelease', 'precautions', 'serviceNotes', 'inbodyResult', 'closeRateNotes'].forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            // 清除風險排名
+            ['risk1', 'risk2', 'risk3'].forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            // 清除建議課程
+            ['weightTraining', 'pilatesTraining', 'stretchTraining', 'totalCourses'].forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            ['weightOrder', 'pilatesOrder', 'stretchOrder'].forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            // 清除骨骼評估的度數輸入
+            document.querySelectorAll('.skeleton-degree, .degree-input').forEach(function(el) {
+                el.value = '';
+            });
+            // 清除骨骼備註
+            document.querySelectorAll('[id$="Notes"], [id$="Note"]').forEach(function(el) {
+                if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
+                    // 排除非骨骼備註
+                    if (el.id !== 'closeRateNotes' && el.id !== 'serviceNotes') {
+                        el.value = '';
+                    }
+                }
+            });
+            // 清除肌肉評估項目
+            ['shoulderMuscles', 'chestMuscles', 'backMuscles', 'coreMuscles', 'gluteMuscles', 'legMuscles'].forEach(function(id) {
+                var container = document.getElementById(id);
+                if (container) {
+                    container.querySelectorAll('.muscle-entry').forEach(function(entry) {
+                        entry.remove();
+                    });
+                }
+            });
+            // 清除教練評分
+            document.querySelectorAll('.half-star-rating').forEach(function(el) {
+                el.dataset.value = '0';
+                el.querySelectorAll('.star-fill').forEach(function(fill) {
+                    fill.style.width = '0%';
+                });
+                var valDisplay = el.querySelector('.rating-value');
+                if (valDisplay) valDisplay.textContent = '0';
+            });
+            // 清除上傳的照片
+            motiFiles = [];
+            inbodyFiles = [];
+            var motiPreview = document.getElementById('motiPreview');
+            if (motiPreview) motiPreview.innerHTML = '';
+            var inbodyPreview = document.getElementById('inbodyPreview');
+            if (inbodyPreview) inbodyPreview.innerHTML = '';
+            var motiCount = document.getElementById('motiCount');
+            if (motiCount) motiCount.textContent = '已選擇 0 / 20 張';
+            var inbodyCount = document.getElementById('inbodyCount');
+            if (inbodyCount) inbodyCount.textContent = '已選擇 0 / 1 張';
+            // 清除 bookingId
+            window.selectedBookingId = null;
+            // 清除疾病其他
+            var diseaseOther = document.getElementById('diseaseOther');
+            if (diseaseOther) diseaseOther.value = '';
+            // 清除草稿
+            clearDraft();
+            // 回到第一頁
+            if (typeof goToPage === 'function') goToPage(1);
+
+            console.log('評估表單已重置');
+        }
+
         function selectBooking(memberId, name, phone, date, time, bookingId) {
+            // 檢查是否有未送出的評估資料，顯示確認對話框
+            if (hasAssessmentData()) {
+                var confirmed = confirm('目前表單有未送出的評估資料，切換學員將會清除所有填寫內容。\n\n確定要切換嗎？');
+                if (!confirmed) return;
+                resetAssessmentForm();
+            }
+
             // 填入會員資料
             document.getElementById('memberName').value = name;
             document.getElementById('memberPhone').value = phone;
             document.getElementById('assessmentDate').value = date;
             document.getElementById('assessmentTime').value = time;
-            
+
             // 儲存 bookingId 用於後續標記已完成
             window.selectedBookingId = bookingId;
-            
+
             // 收合名冊
             bookingListOpen = false;
             document.getElementById('bookingListContent').style.display = 'none';
             document.getElementById('toggleArrow').classList.remove('open');
-            
-            // 自動查詢會員
-            searchMember();
-            
+
+            // 自動查詢會員（跳過確認，因為已在 selectBooking 中確認過）
+            searchMember(true);
+
             showToast('已選擇：' + name);
         }
     </script>
