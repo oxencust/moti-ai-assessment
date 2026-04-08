@@ -3955,11 +3955,11 @@
                     breathingPattern: document.getElementById('breathingPatternNote')?.value || ''
                 },
                 
-                // 肌肉張力（JSON 格式）
-                muscles: collectMuscleData(),
+                // 肌肉張力（文字格式，寫入 Supabase 用）
+                muscles: formatMuscleText(),
                 
-                // 肌肉張力（文字格式，給 Google Sheet 用）
-                muscleText: formatMuscleText(),
+                // 肌肉張力（JSON 格式，備用）
+                musclesJson: collectMuscleData(),
                 
                 // 肌肉張力（LINE 訊息用）
                 muscleTextForLine: formatMuscleTextForLine(),
