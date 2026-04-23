@@ -2226,11 +2226,17 @@
         // ========================================================
 
         // ==================== Supabase Edge Function Helper ====================
+        var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1uamlsaHB6dG5vd2FwbGdndmtrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU3MDA0ODYsImV4cCI6MjA4MTI3NjQ4Nn0.X3e9DF3iT2KUR9ma3_Ins01vG607R155v0xia8hO_Qg';
+
         async function callEdge(action, params = {}) {
             try {
                 var response = await fetch(CONFIG.EDGE_FUNCTION_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+                        'apikey': SUPABASE_ANON_KEY
+                    },
                     body: JSON.stringify({
                         action: action,
                         ...params
@@ -3860,7 +3866,7 @@
                 assessmentDateTime: dateValue + ' ' + timeValue + ':00',
                 
                 // 分析師資料
-                analystId: analystData ? (analystData.name || analystData.id) : '',
+                analystId: analystData ? (analystData.id || '') : '',
                 analystName: analystData ? analystData.coach_name : '',
                 analystLineId: document.getElementById('analystLineId').value,
                 
@@ -3957,7 +3963,7 @@
                 
                 // 肌肉張力（文字格式，寫入 Supabase 用）
                 muscles: formatMuscleText(),
-                
+
                 // 肌肉張力（JSON 格式，備用）
                 musclesJson: collectMuscleData(),
                 
