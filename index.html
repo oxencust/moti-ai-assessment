@@ -4358,7 +4358,8 @@
                 if (_albumUid && !albumUrlWithUid.includes('line_id_edu=')) {
                   albumUrlWithUid += (albumUrlWithUid.includes('?') ? '&' : '?') + 'line_id_edu=' + encodeURIComponent(_albumUid);
                 }
-                details += '<p><strong>相簿連結：</strong><a href="' + albumUrlWithUid + '" target="_blank">' + albumUrlWithUid + '</a></p>';
+                // href 含 line_id_edu 確保點擊有效；顯示文字是乾淨 URL（不洩 line_id_edu）
+                details += '<p><strong>相簿連結：</strong><a href="' + albumUrlWithUid + '" target="_blank">' + result.albumUrl + '</a></p>';
             }
             
             document.getElementById('successDetails').innerHTML = details;
