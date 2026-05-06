@@ -4308,7 +4308,7 @@
                 // 提交到 Make
                 var response = await fetch(CONFIG.MAKE_WEBHOOK_URL, {
                     method: 'POST',
-                    headers: _headers,
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         action: 'submit_assessment',
                         data: formData
