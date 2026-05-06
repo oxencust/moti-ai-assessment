@@ -4345,7 +4345,20 @@
             
             // 顯示相簿連結（從後端返回）
             if (result && result.albumUrl) {
-                details += '<p><strong>相簿連結：</strong><a href="' + result.albumUrl + '" target="_blank">' + result.albumUrl + '</a></p>';
+                // Sprint 1-C: 加 line_id_edu 給相簿頁，讓 callEdge URL fallback 能 authenticate
+                let _albumUid = '';
+                try {
+                  _albumUid = sessionStorage.getItem('staffLineUid')
+                    || JSON.parse(sessionStorage.getItem('currentStaff') || 'null')?.line_id_edu
+                    || new URLSearchParams(location.search).get('line_id_edu')
+                    || new URLSearchParams(location.search).get('uid')
+                    || '';
+                } catch(e) {}
+                let albumUrlWithUid = result.albumUrl;
+                if (_albumUid && !albumUrlWithUid.includes('line_id_edu=')) {
+                  albumUrlWithUid += (albumUrlWithUid.includes('?') ? '&' : '?') + 'line_id_edu=' + encodeURIComponent(_albumUid);
+                }
+                details += '<p><strong>相簿連結：</strong><a href="' + albumUrlWithUid + '" target="_blank">' + albumUrlWithUid + '</a></p>';
             }
             
             document.getElementById('successDetails').innerHTML = details;
