@@ -4460,47 +4460,50 @@
         }
         
         function handleDroppedFiles(files, type, multiple) {
-            var imageFiles = Array.from(files).filter(function(f) {
-                return f.type.startsWith('image/');
-            });
-            
+            // 🆕 v2: 改走共用 compress + add helper（與主表單共用 CONFIG.MAX_IMAGE_WIDTH/QUALITY）
+            return addSupplementFilesWithCompression(Array.from(files), type, multiple);
+        }
+
+        // 🆕 v2: 補件路徑（檔案 input + drag-drop）共用的「壓縮 + 加入 supplementData」helper
+        //   - 與主表單同一個 compressImage()，自動套 CONFIG.MAX_IMAGE_WIDTH（1200px）+ CONFIG.IMAGE_QUALITY（0.7）
+        //   - 修補根因：原本補件直接上傳手機原拍照（5-15MB / 4032×3024）會讓 ImageKit 顯示時 timeout 打不開
+        async function addSupplementFilesWithCompression(rawFiles, type, multiple) {
+            var imageFiles = rawFiles.filter(function(f) { return f && f.type && f.type.startsWith('image/'); });
             if (imageFiles.length === 0) {
-                showToast('請拖曳圖片檔案');
+                showToast('請選擇圖片檔案');
                 return;
             }
-            
-            // 如果不是多選，只取第一張
             if (!multiple) {
                 imageFiles = [imageFiles[0]];
             }
-            
-            var previewId = type === 'moti' ? 'supplementMotiPreview' : 'supplementInbodyPreview';
-            var preview = document.getElementById(previewId);
-            
-            imageFiles.forEach(function(file) {
-                // 加入資料
-                if (type === 'moti') {
-                    supplementData.motiFiles.push(file);
-                } else {
-                    supplementData.inbodyFiles = [file]; // InBody 只保留一張
-                    preview.innerHTML = ''; // 清空之前的預覽
+
+            // 視覺回饋：壓縮可能花幾秒
+            showToast('壓縮中... ' + imageFiles.length + ' 張');
+
+            // 串行壓縮（canvas 並行壓縮會吃光記憶體，特別是手機端）
+            var compressed = [];
+            for (var i = 0; i < imageFiles.length; i++) {
+                try {
+                    var c = await compressImage(imageFiles[i]);
+                    compressed.push(c);
+                } catch (err) {
+                    console.error('補件壓縮失敗', imageFiles[i].name, err);
                 }
-                
-                // 建立預覽
-                var reader = new FileReader();
-                reader.onload = function(e) {
-                    var idx = type === 'moti' ? supplementData.motiFiles.length - 1 : 0;
-                    var div = document.createElement('div');
-                    div.className = 'supplement-preview-item';
-                    div.innerHTML = '<img src="' + e.target.result + '">' +
-                        '<button class="remove-btn" onclick="removeSupplementFile(\'' + type + '\', ' + idx + ')">×</button>';
-                    preview.appendChild(div);
-                };
-                reader.readAsDataURL(file);
-            });
-            
+            }
+            if (compressed.length === 0) {
+                showToast('全部圖片壓縮失敗');
+                return;
+            }
+
+            if (type === 'moti') {
+                supplementData.motiFiles = supplementData.motiFiles.concat(compressed);
+            } else {
+                supplementData.inbodyFiles = compressed.slice(0, 1); // InBody 只保留一張
+            }
+
+            updateSupplementPreview(type);
             updateSupplementButton();
-            showToast('已加入 ' + imageFiles.length + ' 張照片');
+            showToast('已加入 ' + compressed.length + ' 張照片');
         }
         
         function closeSupplementModal() {
@@ -4508,21 +4511,12 @@
         }
         
         function handleSupplementFile(event, type) {
+            // 🆕 v2: 走共用壓縮 helper（multiple = moti 是多選、inbody 單選）
             var files = Array.from(event.target.files);
-            var previewId = type === 'moti' ? 'supplementMotiPreview' : 'supplementInbodyPreview';
-            var preview = document.getElementById(previewId);
-            
-            if (type === 'moti') {
-                supplementData.motiFiles = supplementData.motiFiles.concat(files);
-            } else {
-                supplementData.inbodyFiles = files.slice(0, 1);
-            }
-            
-            // 更新預覽
-            updateSupplementPreview(type);
-            
-            // 更新按鈕狀態
-            updateSupplementButton();
+            var multiple = (type === 'moti');
+            // 清掉 input.value，下次選同一個檔案才會再觸發 change
+            try { event.target.value = ''; } catch (e) {}
+            return addSupplementFilesWithCompression(files, type, multiple);
         }
         
         function updateSupplementPreview(type) {
